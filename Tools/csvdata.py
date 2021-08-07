@@ -1,9 +1,5 @@
-from playsound import playsound
 import fnmatch
-import csv
 import os
-import math
-import glob
 from num2words import num2words
 
 def fileIterate():
@@ -48,9 +44,36 @@ def fileIterate():
 
     print("Finished transcription")
 
-def tNum2Word(n):
-    digits = [num2words((n//(10**i))%10) for i in range(math.ceil(math.log(n, 10)), -1, -1)][bool(math.log(n,10)%1):]
-    return digits
+
+def tNum2Word(transcription: str) -> str:
+    """Converts a list of numbers to there written format. If the transcription contains words handle this correctly.
+
+    Args:
+        n (str): string of single digit numbers. May contain non integers as well.
+
+    Returns:pyth
+        str: transcrition with numbers as text
+    """
+    NUMS = ["0","1","2","3","4","5","6","7","8","9"]
+    
+    word = ""
+    transcriptionList = []
+    for char in transcription:
+        if char in NUMS:
+            # If previous char was non number append to list
+            if word != "":
+                transcriptionList.append(word)
+                word = ""
+            transcriptionList.append(num2words(int(char)))
+        # Combine text into a single element of list
+        else:
+            word += char
+
+    # If transciption ends with non number
+    if word != "": 
+        transcriptionList.append(word)
+    
+    return " ".join(transcriptionList)
 
 def csvAppend(path,bytes,transcription):
     return
