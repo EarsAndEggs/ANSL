@@ -3,9 +3,9 @@ import os
 from num2words import num2words
 
 def fileIterate():
-    inputDir = os.getcwd()      
+    inputDir = os.getcwd()+"\\tools\\audio"     
     print(inputDir)
-    outputDir = os.getcwd()+"\output"
+    outputDir = os.getcwd()+"\\tools\\output"
     print(outputDir)
 
     for file in os.listdir(inputDir):
@@ -30,7 +30,7 @@ def fileIterate():
                     print("Repeating audio clip")
                     continue
                 if choice == 'n':
-                    inputTranscription = int(inputTranscription)
+                    inputTranscription = inputTranscription
                     cleanedTranscription = tNum2Word(inputTranscription)
                     print(cleanedTranscription)
 
