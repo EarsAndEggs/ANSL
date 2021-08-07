@@ -2,35 +2,37 @@ import fnmatch
 import os
 from num2words import num2words
 
-def fileIterate():
-    inputDir = os.getcwd()+"\\tools\\audio"     
-    print(inputDir)
-    outputDir = os.getcwd()+"\\tools\\output"
+def fileIterate(audioDir: str):   
+    print(audioDir)
+    outputDir = audioDir+"/processed"
     print(outputDir)
 
-    for file in os.listdir(inputDir):
+    files = os.listdir(audioDir)
+    for file in files:
         fileName = os.fsdecode(file)
         if fileName.endswith(".mp3"): 
-            wavImportNumber = len(fnmatch.filter(os.listdir(inputDir), '*.mp3'))
-            print(str(wavImportNumber) + " audio clips remaining for processing")
-            
-            filePath = os.path.join(inputDir, fileName)
-            fileSize = os.path.getsize(filePath)
-            print("Playing: " + filePath + " with: " + str(fileSize) + " bytes of data")
 
-            while True:
+            wavImportNumber = len([True for file in files if file.endswith(".mp3")])
+            print(f"{wavImportNumber} audio clips remaining for processing")
+            
+            filePath = os.path.join(audioDir, fileName)
+            fileSize = os.path.getsize(filePath)
+            print(f"Playing: {filePath} with: {fileSize} bytes of data")
+
+            play_audio = True
+            while play_audio:
                 #playsound(fileName)
                 
                 inputTranscription = input("Enter transcription: ")
                 choice = input("Repeat audio clip? (y/n) ")
 
-                while choice not in ('y', 'n'):
-                    print("Invalid input, please type either (y/n)")
+                while choice.lower() not in ('y', 'n'):
+                    choice = input("Invalid input, please type either (y/n)")
+                
                 if choice == 'y':
                     print("Repeating audio clip")
-                    continue
-                if choice == 'n':
-                    inputTranscription = inputTranscription
+                elif choice == 'n':
+                    play_audio = False
                     cleanedTranscription = tNum2Word(inputTranscription)
                     print(cleanedTranscription)
 
@@ -38,9 +40,6 @@ def fileIterate():
 
                     print("Moving on to next audio clip")
                     break
-            continue
-        else:
-            continue
 
     print("Finished transcription")
 
@@ -62,7 +61,7 @@ def tNum2Word(transcription: str) -> str:
         if char in NUMS:
             # If previous char was non number append to list
             if word != "":
-                transcriptionList.append(word)
+                transcriptionList.append(word.strip())
                 word = ""
             transcriptionList.append(num2words(int(char)))
         # Combine text into a single element of list
@@ -75,6 +74,7 @@ def tNum2Word(transcription: str) -> str:
     
     return " ".join(transcriptionList)
 
+        
 def csvAppend(path,bytes,transcription):
     return
 
@@ -84,4 +84,4 @@ def csvSplit():
 def csvScramble():
     return
 
-fileIterate()
+fileIterate("/Users/jack/Downloads")
