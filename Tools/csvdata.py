@@ -1,4 +1,3 @@
-from genericpath import exists
 import os
 import sys
 import csv
@@ -6,9 +5,16 @@ import math
 import random
 
 from num2words import num2words
-
+from pydub import AudioSegment
+from pydub.playback import play
 
 def file_iterate(audio_dir: str):
+    """ file_iterate goes over each mp3 file and provides the ability to transcribe them
+
+
+    Args:
+        audio_dir (str): directory that contains the audio clips to be transcribed
+    """
     print(audio_dir)
     output_dir = audio_dir+"/processed"
     print(output_dir)
@@ -27,7 +33,8 @@ def file_iterate(audio_dir: str):
 
             play_audio = True
             while play_audio:
-                # playsound(fileName)
+                audio = AudioSegment.from_mp3(file_path)
+                play(audio)
 
                 input_transcription = input("Enter transcription: ")
                 choice = input("Repeat audio clip? (y/n) ")
@@ -90,15 +97,14 @@ def csv_append(filepath: str, wav_path: str, bytes: int, transcription: str) -> 
         bytes (int): size of audio file in bytes
         transcription (str): transribed string
     """
-    HEADER = ["wav_filename","wav_size","transcript"]
+    HEADER = ["wav_filename", "wav_size", "transcript"]
     exsists = os.path.exists(filepath)
     with open(filepath, "a+") as csv_file:
         writer = csv.writer(csv_file)
+        # If file is new write headers to top row
         if not exsists:
             writer.writerow(HEADER)
         writer.writerow([wav_path, bytes, transcription])
-
-        
 
 
 def csv_split(input_file: str) -> None:
@@ -124,6 +130,7 @@ def csv_split(input_file: str) -> None:
     i = 0
     for s in SPLITS:
         filename = os.path.dirname(input_file) + f"/{s}.csv"
+        # Get required proportion of training data
         d = data[i:i+math.ceil(SPLITS[s]*rows)]
         i += len(d)
         write_data(filename, headers, d)
@@ -141,6 +148,7 @@ def write_data(output_file: str, header: list[str], data: list[any]) -> None:
         writer = csv.writer(csv_file)
         writer.writerow(header)
         writer.writerows(data)
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
