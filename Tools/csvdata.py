@@ -96,10 +96,9 @@ def json_append(filepath: str, transcription: str, duration: int) -> None:
     """ json_append writes the transcriptions and required data to the data csv file
 
     Args:
-        filepath (str): path to master csv file containing all data
-        wav_path (str): path to audio file
-        bytes (int): size of audio file in bytes
-        transcription (str): transribed string
+        filepath (str): path to master json file containing all data
+        transcription (str): transcribed string
+        duration (int): duration of audio file
     """
     STRING = {"audio_filepath": f'"{filepath}"', "text": f'"{transcription}"', "duration": f'"{duration}"'}
 
@@ -110,10 +109,88 @@ def json_append(filepath: str, transcription: str, duration: int) -> None:
         #if not exsists:
             
         json.dump(STRING, json_file)
+        
+def remove_clips():
+    """ remove_clips deletes file if not suitable for transcription
+
+    Args:
+    """
+    audio_files = os.listdir("audio_files")
+    for f in audio_files:
+        print(f)
+        # transcribe_audio(f)
+        transcribed_file = "EXAMPLE. INPUT WOULD COME FROM TRANSCRIBE FUNCTION"
+        print(transcribed_file)
+        ans = input("Do you want this file to be transcribed? Y/N ")
+        if ans.lower() == "n":
+            os.rename("./audio_files/"+f,"./bad_files/"+f)
+        else:
+            # play transcription to check accuracy
+            pass
+    print("Files that you said N to, are now in a new folder")
+
+def replacements():
+    """ replacements changes short hand abbrevations of words back to original for transcription
+
+    Args:
+    """
+    transcription = "1 2 3 4 5 oblique 6 7 8 9"
+    replacements = {"oblique": "o"}
+    split_transcription = transcription.split()
+    updated = []
+    for index, part in enumerate(split_transcription):
+        if part.lower() in replacements.keys():
+            updated.append(replacements[part])
+        else:
+            updated.append(part)
+
+    print(f"Original: {transcription}")
+    print(f"With replacements: {' '.join(updated) }")
 
 
-def csv_split(input_file: str) -> None:
-    """ csv_split splits master file of all data into training, test and development
+def linux_to_windows(windows_dir: str, linux_dir: str):
+    """ linux_to_windows converts windows directories to linux directories
+
+    Args:
+        windows_dir (str): old windows directory
+        linux_dir (str): target linux directory        
+    """
+    file_path = windows_dir
+    new_path = windows_dir + file_path[len(linux_dir):]
+
+    print(f"Linux Path: {file_path}")
+    print(f"Windows Path: {new_path}")  
+    
+def convert_paths(linux_folder: str):
+    """ convert_paths modifies the old windows directory to the linux directory
+
+    Args:
+        linux_folder (str): target linux directory folder        
+    """
+    with open(linux_folder, "r") as f:
+        contents = f.readlines()
+        headings = contents[0]
+        data = contents[1:]
+    
+    new_csv = [headings]
+    print("a", new_csv)
+    
+    for row in data:
+        split_row= row.split(",")
+        path = split_row[0]
+        file_name_orig = path.split("/")[-1]
+        file_name_new = linux_folder +  "/" + file_name_orig
+        new_row = ",".join([file_name_new, split_row[1], split_row[2]])
+        print(new_row)
+        new_csv.append(new_row)
+    print(new_csv)
+
+    with open("new_csv.csv", "w+") as f:
+        for line in new_csv:
+            f.write(line)
+
+def json_split(input_file: str) -> None:
+    """ json_split splits master file of all data into training, test and development
 
     Args:
         input_file (str): master csv file containing all transcripts data
