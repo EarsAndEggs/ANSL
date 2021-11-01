@@ -3,6 +3,7 @@ import sys
 import csv
 import math
 import random
+import json
 
 from num2words import num2words
 from pydub import AudioSegment
@@ -16,20 +17,23 @@ def file_iterate(audio_dir: str):
         audio_dir (str): directory that contains the audio clips to be transcribed
     """
     print(audio_dir)
-    output_dir = audio_dir+"/processed"
+    output_dir = audio_dir+"\processed"
     print(output_dir)
 
     files = os.listdir(audio_dir)
     for file in files:
         filename = os.fsdecode(file)
-        if filename.endswith(".mp3"):
+        if filename.endswith(".wav"):
 
-            wav_import_number = len([True for file in files if file.endswith(".mp3")])
+            wav_import_number = len([True for file in files if file.endswith(".wav")])
             print(f"{wav_import_number} audio clips remaining for processing")
 
             file_path = os.path.join(audio_dir, filename)
-            file_size = os.path.getsize(file_path)
-            print(f"Playing: {file_path} with: {file_size} bytes of data")
+            
+            audiofile = AudioSegment.from_file(file_path)
+            audio_duration = audiofile.duration_seconds
+            
+            print(f"Playing: {file_path} with: {audio} seconds of data")
 
             play_audio = True
             while play_audio:
@@ -49,7 +53,7 @@ def file_iterate(audio_dir: str):
                     cleaned_transcription = transcibe_num2word(input_transcription)
                     print(cleaned_transcription)
 
-                    csv_append(file_path, file_size, cleaned_transcription)
+                    json_append(file_path,cleaned_transcription,audio_duration)
 
                     print("Moving on to next audio clip")
                     break
@@ -88,8 +92,8 @@ def transcibe_num2word(transcription: str) -> str:
     return " ".join(transcription_list)
 
 
-def csv_append(filepath: str, wav_path: str, bytes: int, transcription: str) -> None:
-    """ csv_append writes the transcriptions and required data to the data csv file
+def json_append(filepath: str, transcription: str, duration: int) -> None:
+    """ json_append writes the transcriptions and required data to the data csv file
 
     Args:
         filepath (str): path to master csv file containing all data
@@ -97,14 +101,15 @@ def csv_append(filepath: str, wav_path: str, bytes: int, transcription: str) -> 
         bytes (int): size of audio file in bytes
         transcription (str): transribed string
     """
-    HEADER = ["wav_filename", "wav_size", "transcript"]
-    exsists = os.path.exists(filepath)
-    with open(filepath, "a+") as csv_file:
-        writer = csv.writer(csv_file)
+    STRING = {"audio_filepath": f'"{filepath}"', "text": f'"{transcription}"', "duration": f'"{duration}"'}
+
+    #exsists = os.path.exists(filepath)
+    
+    with open(filepath, "a+") as json_file:
         # If file is new write headers to top row
-        if not exsists:
-            writer.writerow(HEADER)
-        writer.writerow([wav_path, bytes, transcription])
+        #if not exsists:
+            
+        json.dump(STRING, json_file)
 
 
 def csv_split(input_file: str) -> None:
