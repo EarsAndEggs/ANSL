@@ -20,7 +20,7 @@ def file_iterate(audio_dir: str):
         audio_dir (str): directory that contains the audio clips to be transcribed
     """
     print(audio_dir)
-    output_dir = audio_dir+"\processed"
+    output_dir = audio_dir+"/processed"
     print(output_dir)
 
     files = os.listdir(audio_dir)
@@ -247,19 +247,44 @@ def menu():
     Q: Quit the ANSL Transcription Tool
 
 Please enter your choice: """)
+
     print()
+
+    root = Tk()
+    root.overrideredirect(True)
+    root.lift()
+    root.attributes('-topmost',True)
+    root.after_idle(root.attributes,'-topmost',False)
+    
 
     if choice == "A" or choice == "a":
         transcribe_dir = askdirectory(title='Select Folder for transcribing data') # shows dialog box and return the path
-        file_iterate(transcribe_dir)
+        root.withdraw
+        if transcribe_dir == "":
+            print("Folder not selected, returning to main menu")
+            menu()
+        else:
+            file_iterate(transcribe_dir)
             
     elif choice == "B" or choice == "b":
         split_dir = askdirectory(title='Select File for splitting and shuffling') # shows dialog box and return the path
-        json_split(split_dir)
+        root.withraw()
+        
+        if split_dir == "":
+            print("File not selected, returning to main menu")
+            menu()
+        else:
+            json_split(split_dir)
         
     elif choice == "C" or choice == "c":
-        linux_dir = askopenfilename(filetypes=[("JSON file","*.json")], title='Select Manifest file to convert directories')         
-        convert_paths(linux_dir)
+        linux_dir = askopenfilename(filetypes=[("JSON file","*.json")], title='Select Manifest file to convert directories')
+        root.withdraw
+
+        if linux_dir == "":
+            print("File not selected, returning to main menu")
+            menu()
+        else:            
+            convert_paths(linux_dir)
         
     elif choice == "Q" or choice == "q":
         sys.exit
