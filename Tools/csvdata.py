@@ -5,6 +5,9 @@ import math
 import random
 import json
 
+from tkinter import Tk
+from tkinter.filedialog import askdirectory, askopenfilename
+
 from num2words import num2words
 from pydub import AudioSegment
 from pydub.playback import play
@@ -196,9 +199,8 @@ def json_split(input_file: str) -> None:
         input_file (str): master csv file containing all transcripts data
     """
     # SPLIT POINTS - specify percentages of which each is used
-    SPLITS: dict[str, float] = {"training": 0.7,
-                                "test": 0.2,
-                                "dev": 0.1}
+    SPLITS: dict[str, float] = {"training": 0.8,
+                                "validation": 0.2,}
 
     with open(input_file, "r") as csv_file:
         data = list(csv.reader(csv_file))
@@ -231,10 +233,40 @@ def write_data(output_file: str, header: list[str], data: list[any]) -> None:
         writer.writerow(header)
         writer.writerows(data)
 
+def menu():
+    """ Menu for ANSL Transcription Tool
+    
+    Args:
+    """
+    print("Welcome to the ANSL Transcription Tool")
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        file_path = os.getcwd()
+    choice = input("""
+    A: Transcribe files in selected folder
+    B: Split and shuffle data into two seperate datasets, training and validation
+    C: Convert windows directory to linux directory for learning
+    Q: Quit the ANSL Transcription Tool
+
+Please enter your choice: """)
+    print()
+
+    if choice == "A" or choice == "a":
+        transcribe_dir = askdirectory(title='Select Folder for transcribing data') # shows dialog box and return the path
+        file_iterate(transcribe_dir)
+            
+    elif choice == "B" or choice == "b":
+        split_dir = askdirectory(title='Select File for splitting and shuffling') # shows dialog box and return the path
+        json_split(split_dir)
+        
+    elif choice == "C" or choice == "c":
+        linux_dir = askopenfilename(filetypes=[("JSON file","*.json")], title='Select Manifest file to convert directories')         
+        convert_paths(linux_dir)
+        
+    elif choice == "Q" or choice == "q":
+        sys.exit
+        
     else:
-        file_path = sys.argv[1]
-    file_iterate(file_path)
+        print("You must only select either A, B, C or Q")
+        print("Please try again")
+        menu()
+    
+menu()
