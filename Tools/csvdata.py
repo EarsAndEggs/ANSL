@@ -19,49 +19,84 @@ def file_iterate(audio_dir: str):
     Args:
         audio_dir (str): directory that contains the audio clips to be transcribed
     """
-    print(audio_dir)
-    output_dir = audio_dir+"/processed"
-    print(output_dir)
+    input("IMPORTANT: A Manifest file for transcription data MUST be selected or created before continuing! Before continuing, please create a manifest file for output while the program is paused. To continue, input any key")
+    
+    tk = Tk()
+    tk.overrideredirect(True)
+    tk.lift()
+    tk.attributes('-topmost',True)
+    tk.after_idle(tk.attributes,'-topmost',False)
+    
+    processed_dir = audio_dir+"/processed"
+    if not os.path.exists(processed_dir):
+        os.makedirs(audio_dir+processed_dir)
+        
+    deleted_dir = audio_dir+"/deleted"
+    if not os.path.exists(deleted_dir):
+        os.makedirs(audio_dir+deleted_dir)
+        
+    manifest_path = askopenfilename(initialdir=f'"{audio_dir}"',types=[("JSON file","*.json")], title='Select Manifest file')
+    tk.withdraw
 
-    files = os.listdir(audio_dir)
-    for file in files:
-        filename = os.fsdecode(file)
-        if filename.endswith(".wav"):
+    if manifest_path == "":
+        sys.exit("Manifest File was NOT selected, please make sure to create a manifest file for transcription before using this function. Stopping execution!")
+    else:            
 
-            wav_import_number = len([True for file in files if file.endswith(".wav")])
-            print(f"{wav_import_number} audio clips remaining for processing")
+        audio_files = os.listdir(audio_dir)
+        for audio_file in audio_files:
+            file_name = os.fsdecode(audio_file)
+            if file_name.endswith(".wav"):
 
-            file_path = os.path.join(audio_dir, filename)
-            
-            audiofile = AudioSegment.from_file(file_path)
-            audio_duration = audiofile.duration_seconds
-            
-            print(f"Playing: {file_path} with: {audio} seconds of data")
+                wav_import_number = len([True for audio_file in audio_files if audio_file.endswith(".wav")])
+                print(f"{wav_import_number} audio clips remaining for processing")
 
-            play_audio = True
-            while play_audio:
-                audio = AudioSegment.from_mp3(file_path)
-                play(audio)
+                file_path = os.path.join(audio_dir, file_name)
+                processed_path = os.path.join(processed_dir, file_name)
+                deleted_path = os.path.join(deleted_dir, file_name)
+                
+                audiofile = AudioSegment.from_file(file_path)
+                audio_duration = audiofile.duration_seconds
+                
+                print(f"Playing: {file_path} with: {audio} seconds of data")
 
-                input_transcription = input("Enter transcription: ")
-                choice = input("Repeat audio clip? (y/n) ")
+                play_audio = True
+                while play_audio:
+                    ans = input("Should this audio file be deleted? (y/n) ")
+                    
+                    while ans not in ('y', 'n','Y','N'):
+                        ans = input("Invalid input, please type either (y/n)")
+                        
+                    if ans == "Y" or choice == "y":
+                        os.rename(file_path,deleted_path)
+                        print("Deleted " + file_path + ", moving on to next audio clip")
+                    elif ans == "N" or choice == "n":
+                        # play transcription to check accuracy
+                        audio = AudioSegment.from_mp3(file_path)
+                        play(audio)
 
-                while choice.lower() not in ('y', 'n'):
-                    choice = input("Invalid input, please type either (y/n)")
+                        input_transcription = input("Enter transcription: ")
+                        choice = input("Repeat audio clip? (y/n) ")
 
-                if choice == 'y':
-                    print("Repeating audio clip")
-                elif choice == 'n':
-                    play_audio = False
-                    cleaned_transcription = transcibe_num2word(input_transcription)
-                    print(cleaned_transcription)
+                        while choice not in ('y', 'n','Y','N'):
+                            choice = input("Invalid input, please type either (y/n)")
 
-                    json_append(file_path,cleaned_transcription,audio_duration)
+                        if choice == 'y' or choice == 'Y':
+                            print("Repeating audio clip")
+                            
+                        elif choice == 'n' or choice == 'N':
+                            play_audio = False
+                            expanded_transcription = replacements(input_transcription)
+                            cleaned_transcription = transcibe_num2word(expanded_transcription)
+                            print(cleaned_transcription)
 
-                    print("Moving on to next audio clip")
-                    break
+                            json_append(manifest_path,file_path,cleaned_transcription,audio_duration)
+                            
+                            os.rename(file_path,processed_path)
 
-    print("Finished transcription")
+                            print("Appended to manifest file, moving on to next audio clip")
+                            break
+
+    print("All files have now been processed! Please check the manifest file for any inconsistencies!")
 
 
 def transcibe_num2word(transcription: str) -> str:
@@ -95,50 +130,28 @@ def transcibe_num2word(transcription: str) -> str:
     return " ".join(transcription_list)
 
 
-def json_append(filepath: str, transcription: str, duration: int) -> None:
+def json_append(manifest_file: str, filepath: str, transcription: str, duration: int) -> None:
     """ json_append writes the transcriptions and required data to the data csv file
 
     Args:
+        manifest_file (str): target path to main manifest file
         filepath (str): path to master json file containing all data
         transcription (str): transcribed string
         duration (int): duration of audio file
     """
     STRING = {"audio_filepath": f'"{filepath}"', "text": f'"{transcription}"', "duration": f'"{duration}"'}
-
-    #exsists = os.path.exists(filepath)
     
-    with open(filepath, "a+") as json_file:
-        # If file is new write headers to top row
-        #if not exsists:
-            
+    with open(manifest_file, "a+") as json_file:            
         json.dump(STRING, json_file)
         
-def remove_clips():
-    """ remove_clips deletes file if not suitable for transcription
-
-    Args:
-    """
-    audio_files = os.listdir("audio_files")
-    for f in audio_files:
-        print(f)
-        # transcribe_audio(f)
-        transcribed_file = "EXAMPLE. INPUT WOULD COME FROM TRANSCRIBE FUNCTION"
-        print(transcribed_file)
-        ans = input("Do you want this file to be transcribed? Y/N ")
-        if ans.lower() == "n":
-            os.rename("./audio_files/"+f,"./bad_files/"+f)
-        else:
-            # play transcription to check accuracy
-            pass
-    print("Files that you said N to, are now in a new folder")
-
-def replacements():
+def replacements(transcription: str):
     """ replacements changes short hand abbrevations of words back to original for transcription
 
     Args:
+    transcription (str): Transcription to be checked for any abbreviations used
     """
     transcription = "1 2 3 4 5 oblique 6 7 8 9"
-    replacements = {"oblique": "o"}
+    replacements = {"o": "oblique", "a": "attention", "e": "end"}
     split_transcription = transcription.split()
     updated = []
     for index, part in enumerate(split_transcription):
@@ -149,6 +162,8 @@ def replacements():
 
     print(f"Original: {transcription}")
     print(f"With replacements: {' '.join(updated) }")
+    
+    return " ".join(updated)
 
 
 def linux_to_windows(windows_dir: str, linux_dir: str):
@@ -233,7 +248,7 @@ def write_data(output_file: str, header: list[str], data: list[any]) -> None:
         writer.writerow(header)
         writer.writerows(data)
 
-def menu():
+def menu() -> None:
     """ Menu for ANSL Transcription Tool
     
     Args:
