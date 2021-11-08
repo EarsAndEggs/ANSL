@@ -4,6 +4,7 @@ import csv
 import math
 import random
 import json
+import codecs
 
 from tkinter import Tk
 from tkinter.filedialog import askdirectory, askopenfilename
@@ -12,7 +13,7 @@ from num2words import num2words
 from pydub import AudioSegment
 from pydub.playback import play
 
-def file_iterate(audio_dir: str):
+def file_iterate(audio_dir: str) -> None:
     """ file_iterate goes over each mp3 file and provides the ability to transcribe them
 
 
@@ -144,13 +145,12 @@ def json_append(manifest_file: str, filepath: str, transcription: str, duration:
     with open(manifest_file, "a+") as json_file:            
         json.dump(STRING, json_file)
         
-def replacements(transcription: str):
+def replacements(transcription: str) -> str:
     """ replacements changes short hand abbrevations of words back to original for transcription
 
     Args:
     transcription (str): Transcription to be checked for any abbreviations used
     """
-    transcription = "1 2 3 4 5 oblique 6 7 8 9"
     replacements = {"o": "oblique", "a": "attention", "e": "end"}
     split_transcription = transcription.split()
     updated = []
@@ -164,48 +164,54 @@ def replacements(transcription: str):
     print(f"With replacements: {' '.join(updated) }")
     
     return " ".join(updated)
-
-
-def linux_to_windows(windows_dir: str, linux_dir: str):
-    """ linux_to_windows converts windows directories to linux directories
-
-    Args:
-        windows_dir (str): old windows directory
-        linux_dir (str): target linux directory        
-    """
-    file_path = windows_dir
-    new_path = windows_dir + file_path[len(linux_dir):]
-
-    print(f"Linux Path: {file_path}")
-    print(f"Windows Path: {new_path}")  
     
-def convert_paths(linux_folder: str):
+def convert_paths(manifest_file: str) -> None:
     """ convert_paths modifies the old windows directory to the linux directory
 
     Args:
-        linux_folder (str): target linux directory folder        
+        manifest_file (str): target manifest file
     """
-    with open(linux_folder, "r") as f:
-        contents = f.readlines()
-        headings = contents[0]
-        data = contents[1:]
+    ctk = Tk()
+    ctk.overrideredirect(True)
+    ctk.lift()
+    ctk.attributes('-topmost',True)
+    ctk.after_idle(ctk.attributes,'-topmost',False)
     
-    new_csv = [headings]
-    print("a", new_csv)
+    convert_dir = askdirectory(title='Select Folder for final conversion directory')
+    convert_dir_fixed = os.path.dirname(convert_dir)
+    ctk.withdraw
     
-    for row in data:
-        split_row= row.split(",")
-        path = split_row[0]
-        file_name_orig = path.split("/")[-1]
-        file_name_new = linux_folder +  "/" + file_name_orig
-        new_row = ",".join([file_name_new, split_row[1], split_row[2]])
-        print(new_row)
-        new_csv.append(new_row)
-    print(new_csv)
+    manifest_new_dir = os.path.dirname(manifest_file)
+    manifest_new_path = os.path.join(manifest_new_dir, "manifest_new.json")
+    
+    if not os.path.exists(manifest_new_path):
+        open(manifest_new_path, 'w').close()
+    
+    if convert_dir == "":
+        sys.exit("Linux directory has not been selected! Stopping execution! Please restart the tool and try again.")
+    else:
+        new_file = open(manifest_new_path,'w')
 
-    with open("new_csv.csv", "w+") as f:
-        for line in new_csv:
-            f.write(line)
+        with codecs.open(manifest_file, 'r+', encoding='utf-8') as f:
+            
+            file_data = f.read()
+
+            for line in file_data.splitlines():
+                valid_json = "[{0}]".format(line)
+                json_data = json.loads(valid_json)
+                
+                for i in json_data:
+                    json_filepath = i['audio_filepath']
+                    json_filename = os.path.basename(json_filepath)
+                    
+                    final_path = os.path.abspath(os.path.join(convert_dir_fixed, json_filename))
+
+                    i['audio_filepath'] = f'{final_path}'
+                                        
+                    new_file.write(json.dumps(json_data).strip('[]'))
+                    new_file.write('\n')
+        new_file.close
+        print("Finished conversion. Outputted to manifest_new.json in same directory as old manifest file")
 
 def json_split(input_file: str) -> None:
     """ json_split splits master file of all data into training, test and development
@@ -307,6 +313,5 @@ Please enter your choice: """)
     else:
         print("You must only select either A, B, C or Q")
         print("Please try again")
-        menu()
     
 menu()
