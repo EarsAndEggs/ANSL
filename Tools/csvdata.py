@@ -140,7 +140,7 @@ def json_append(manifest_file: str, filepath: str, transcription: str, duration:
         transcription (str): transcribed string
         duration (int): duration of audio file
     """
-    STRING = {"audio_filepath": f'"{filepath}"', "text": f'"{transcription}"', "duration": f'"{duration}"'}
+    STRING = {"audio_filepath": f'"{filepath}"', "text": f'"{transcription}"', "duration": f'{duration}'}
     
     with open(manifest_file, "a+") as json_file:            
         json.dump(STRING, json_file)
@@ -210,8 +210,9 @@ def convert_paths(manifest_file: str) -> None:
                                         
                     new_file.write(json.dumps(json_data).strip('[]'))
                     new_file.write('\n')
+                    
         new_file.close
-        print("Finished conversion. Outputted to manifest_new.json in same directory as old manifest file")
+        print(f'"Finished conversion. Output in: {manifest_new_path}"')
 
 def json_split(input_file: str) -> None:
     """ json_split splits master file of all data into training, test and development
@@ -219,41 +220,39 @@ def json_split(input_file: str) -> None:
     Args:
         input_file (str): master csv file containing all transcripts data
     """
-    # SPLIT POINTS - specify percentages of which each is used
-    SPLITS: dict[str, float] = {"training": 0.8,
-                                "validation": 0.2,}
+    data_dir = os.path.dirname(input_file)
+    
+    train_data_path = os.path.abspath(os.path.join(data_dir, "training_manifest.json"))
+    if not os.path.exists(train_data_path):
+        open(train_data_path, 'w').close()
+        
+    valid_data_path = os.path.abspath(os.path.join(data_dir, "validation_manifest.json"))
+    if not os.path.exists(valid_data_path):
+        open(valid_data_path, 'w').close()
+        
+    with open(input_file, "rb") as f:
+        data = f.read().split('\n')
 
-    with open(input_file, "r") as csv_file:
-        data = list(csv.reader(csv_file))
-        headers = data[0]
-        data = data[1:]
+        random.shuffle(data)
 
-    # Randomise order of data
-    random.shuffle(data)
+        train_data = data[:80]
+        valid_data = data[20:]
+        
+        print("Current weightings are set to: 80% - Training | 20% - Validation")
+           
+    with open(train_data_path, 'w') as f:
+        for train_item in train_data:
+            f.write("%s\n" % train_item)
+    
+    with open(valid_data_path, 'w') as f:
+        for valid_item in valid_data:
+            f.write("%s\n" % valid_item)
+    
+    print("Splitting process complete!")
+    print(f'"Output for training manifest in: {train_data_path}"')
+    print(f'"Output for validation manifest in: {valid_data_path}"')
 
-    rows = len(data)
-    i = 0
-    for s in SPLITS:
-        filename = os.path.dirname(input_file) + f"/{s}.csv"
-        # Get required proportion of training data
-        d = data[i:i+math.ceil(SPLITS[s]*rows)]
-        i += len(d)
-        write_data(filename, headers, d)
-
-
-def write_data(output_file: str, header: list[str], data: list[any]) -> None:
-    """ write_data writes the required header and data to a named csv file
-
-    Args:
-        input_file (str): where the file will be written
-        header (list[str]): header for the csv data
-        data (list[any]): transcript data to be copied
-    """
-    with open(output_file, "w+") as csv_file:
-        writer = csv.writer(csv_file)
-        writer.writerow(header)
-        writer.writerows(data)
-
+    
 def menu() -> None:
     """ Menu for ANSL Transcription Tool
     
@@ -288,7 +287,7 @@ Please enter your choice: """)
             file_iterate(transcribe_dir)
             
     elif choice == "B" or choice == "b":
-        split_dir = askdirectory(title='Select File for splitting and shuffling') # shows dialog box and return the path
+        split_dir = askopenfilename(filetypes=[("JSON file","*.json")], title='Select Manifest file to split into training and validation dataset manifests') # shows dialog box and return the path
         root.withraw()
         
         if split_dir == "":
