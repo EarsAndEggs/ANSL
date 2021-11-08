@@ -240,13 +240,13 @@ def json_split(input_file: str) -> None:
         
         print("Current weightings are set to: 80% - Training | 20% - Validation")
            
-    with open(train_data_path, 'w') as f:
+    with open(train_data_path, 'w') as train_f:
         for train_item in train_data:
-            f.write("%s\n" % train_item)
+            train_f.write("%s\n" % train_item)
     
-    with open(valid_data_path, 'w') as f:
+    with open(valid_data_path, 'w') as valid_f:
         for valid_item in valid_data:
-            f.write("%s\n" % valid_item)
+            valid_f.write("%s\n" % valid_item)
     
     print("Splitting process complete!")
     print(f'"Output for training manifest in: {train_data_path}"')
