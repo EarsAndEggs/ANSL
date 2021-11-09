@@ -1,13 +1,13 @@
 import os
 import sys
-
 import random
+import numpy as np
+
 import json
 import codecs
-import simpleaudio
 import pydub
 
-import numpy as np
+from natsort import natsorted
 
 from tkinter import Tk
 from tkinter.filedialog import askdirectory, askopenfilename
@@ -15,8 +15,6 @@ from tkinter.filedialog import askdirectory, askopenfilename
 from num2words import num2words
 from pydub import AudioSegment
 from pydub import generators
-
-from pydub.playback import play
 
 def file_iterate(audio_dir: str) -> None:
     """ file_iterate goes over each mp3 file and provides the ability to transcribe them
@@ -50,16 +48,17 @@ def file_iterate(audio_dir: str) -> None:
     else:            
 
         audio_files = os.listdir(audio_dir)
-        for audio_file in audio_files:
+        
+        for audio_file in natsorted(audio_files):
             file_name = os.fsdecode(audio_file)
             if file_name.endswith(".wav"):
 
                 wav_import_number = len([True for audio_file in audio_files if audio_file.endswith(".wav")])
                 print(f"{wav_import_number} audio clips remaining for processing")
 
-                file_path = os.path.join(audio_dir, file_name)
-                processed_path = os.path.join(processed_dir, file_name)
-                deleted_path = os.path.join(deleted_dir, file_name)
+                file_path = os.path.abspath(os.path.join(audio_dir, file_name))
+                processed_path = os.path.abspath(os.path.join(processed_dir, file_name))
+                deleted_path = os.path.abspath(os.path.join(deleted_dir, file_name))
                 
                 sound1 = AudioSegment.from_file(file_path)
                 sound2 = generators.Sine(freq=1000).to_audio_segment(duration=1000)
@@ -96,11 +95,9 @@ def file_iterate(audio_dir: str) -> None:
                     
                     cleaned_transcription = transcibe_num2word(input_transcription)
                     expanded_transcription = replacements(cleaned_transcription)
-                    print(expanded_transcription)
-                    print(file_path)
                     json_append(manifest_path,file_path,expanded_transcription,audio_duration)
                     
-                    #os.rename(file_path,processed_path)
+                    os.rename(file_path,processed_path)
 
                     print("Appended to manifest file, moving on to next audio clip")
 
@@ -147,12 +144,10 @@ def json_append(manifest_file: str, filepath: str, transcription: str, duration:
         transcription (str): transcribed string
         duration (int): duration of audio file
     """
-    STRING = {"audio_filepath": f'"{filepath}"', "text": f'"{transcription}"', "duration": f'{duration}'}
-    
-    print(STRING)
-    
+    STRING = {"audio_filepath": f"{filepath}", "text": f"{transcription}", "duration": duration}
+        
     with open(manifest_file, "a") as json_file:            
-        json_file.write(str(STRING)+'\n')
+        json_file.write(json.dumps(STRING)+'\n')
         json_file.close()
         
 def replacements(transcription: str) -> str:
@@ -161,18 +156,16 @@ def replacements(transcription: str) -> str:
     Args:
     transcription (str): Transcription to be checked for any abbreviations used
     """
-    replacements = {"o": "oblique", "a": "attention", "e": "end"}
+    replacements = {"o": "oblique", "a": "attention", "e": "out"}
     split_transcription = transcription.split()
     updated = []
-    for index, part in enumerate(split_transcription):
+    
+    for part in enumerate(split_transcription):
         if part.lower() in replacements.keys():
             updated.append(replacements[part])
         else:
             updated.append(part)
 
-    print(f"Original: {transcription}")
-    print(f"With replacements: {' '.join(updated) }")
-    
     return " ".join(updated)
     
 def convert_paths(manifest_file: str) -> None:
@@ -192,7 +185,7 @@ def convert_paths(manifest_file: str) -> None:
     ctk.withdraw
     
     manifest_new_dir = os.path.dirname(manifest_file)
-    manifest_new_path = os.path.join(manifest_new_dir, "manifest_new.json")
+    manifest_new_path = os.path.abspath(os.path.join(manifest_new_dir, "manifest_new.json"))
     
     if not os.path.exists(manifest_new_path):
         open(manifest_new_path, 'w').close()
@@ -207,7 +200,7 @@ def convert_paths(manifest_file: str) -> None:
             file_data = f.read()
 
             for line in file_data.splitlines():
-                valid_json = "[{0}]".format(line)
+                valid_json = f"[{line}]"
                 json_data = json.loads(valid_json)
                 
                 for i in json_data:
@@ -218,8 +211,7 @@ def convert_paths(manifest_file: str) -> None:
 
                     i['audio_filepath'] = f'{final_path}'
                                         
-                    new_file.write(json.dumps(json_data).strip('[]'))
-                    new_file.write('\n')
+                    new_file.write(json.dumps(json_data)+'\n'.strip('[]'))
                     
         new_file.close
         print(f'"Finished conversion. Output in: {manifest_new_path}"')
