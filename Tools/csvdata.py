@@ -1,16 +1,21 @@
 import os
 import sys
-import csv
-import math
+
 import random
 import json
 import codecs
+import simpleaudio
+import pydub
+
+import numpy as np
 
 from tkinter import Tk
 from tkinter.filedialog import askdirectory, askopenfilename
 
 from num2words import num2words
 from pydub import AudioSegment
+from pydub import generators
+
 from pydub.playback import play
 
 def file_iterate(audio_dir: str) -> None:
@@ -20,7 +25,8 @@ def file_iterate(audio_dir: str) -> None:
     Args:
         audio_dir (str): directory that contains the audio clips to be transcribed
     """
-    input("IMPORTANT: A Manifest file for transcription data MUST be selected or created before continuing! Before continuing, please create a manifest file for output while the program is paused. To continue, input any key")
+    print("IMPORTANT: A Manifest file for transcription data MUST be selected or created before continuing! Before continuing, please create a manifest file for output while the program is paused. To continue, input any key: ")
+    print("")
     
     tk = Tk()
     tk.overrideredirect(True)
@@ -30,13 +36,13 @@ def file_iterate(audio_dir: str) -> None:
     
     processed_dir = audio_dir+"/processed"
     if not os.path.exists(processed_dir):
-        os.makedirs(audio_dir+processed_dir)
+        os.makedirs(processed_dir)
         
     deleted_dir = audio_dir+"/deleted"
     if not os.path.exists(deleted_dir):
-        os.makedirs(audio_dir+deleted_dir)
+        os.makedirs(deleted_dir)
         
-    manifest_path = askopenfilename(initialdir=f'"{audio_dir}"',types=[("JSON file","*.json")], title='Select Manifest file')
+    manifest_path = askopenfilename(initialdir=f'"{audio_dir}"',filetypes=[("JSON file","*.json")], title='Select Manifest file')
     tk.withdraw
 
     if manifest_path == "":
@@ -55,47 +61,48 @@ def file_iterate(audio_dir: str) -> None:
                 processed_path = os.path.join(processed_dir, file_name)
                 deleted_path = os.path.join(deleted_dir, file_name)
                 
-                audiofile = AudioSegment.from_file(file_path)
+                sound1 = AudioSegment.from_file(file_path)
+                sound2 = generators.Sine(freq=1000).to_audio_segment(duration=1000)
+
+                combinedsound = sound1 + sound2
+                #samples = combinedsound.get_array_of_samples()
+                #samples = np.array(samples)
+                
+                audiofile = AudioSegment.from_wav(file_path)
                 audio_duration = audiofile.duration_seconds
                 
-                print(f"Playing: {file_path} with: {audio} seconds of data")
+                print(f"Playing: {file_path} with: {audio_duration} seconds of data")
 
-                play_audio = True
-                while play_audio:
-                    ans = input("Should this audio file be deleted? (y/n) ")
+
+                #playback = simpleaudio.WaveObject(combinedsound.raw_data, num_channels=combinedsound.channels, bytes_per_sample=combinedsound.sample_width, sample_rate=combinedsound.frame_rate)
+                play_obj = pydub.playback._play_with_simpleaudio(combinedsound*3)
+
+                ans = input("Should this audio file be deleted? (y/n) ")
+
+                play_obj.stop()
+                while ans not in ('y', 'n','Y','N'):
+                    ans = input("Invalid input, please type either (y/n)")
+                
+                if ans == "Y" or ans == "y":
+                    os.rename(file_path,deleted_path)
+                    print("Deleted " + file_path + ", moving on to next audio clip")
                     
-                    while ans not in ('y', 'n','Y','N'):
-                        ans = input("Invalid input, please type either (y/n)")
-                        
-                    if ans == "Y" or choice == "y":
-                        os.rename(file_path,deleted_path)
-                        print("Deleted " + file_path + ", moving on to next audio clip")
-                    elif ans == "N" or choice == "n":
-                        # play transcription to check accuracy
-                        audio = AudioSegment.from_mp3(file_path)
-                        play(audio)
+                elif ans == "N" or ans == "n":
+                    
+                    play_obj = pydub.playback._play_with_simpleaudio(combinedsound*10)
 
-                        input_transcription = input("Enter transcription: ")
-                        choice = input("Repeat audio clip? (y/n) ")
+                    input_transcription = input("Enter transcription: ")
+                    play_obj.stop()
+                    
+                    cleaned_transcription = transcibe_num2word(input_transcription)
+                    expanded_transcription = replacements(cleaned_transcription)
+                    print(expanded_transcription)
+                    print(file_path)
+                    json_append(manifest_path,file_path,expanded_transcription,audio_duration)
+                    
+                    #os.rename(file_path,processed_path)
 
-                        while choice not in ('y', 'n','Y','N'):
-                            choice = input("Invalid input, please type either (y/n)")
-
-                        if choice == 'y' or choice == 'Y':
-                            print("Repeating audio clip")
-                            
-                        elif choice == 'n' or choice == 'N':
-                            play_audio = False
-                            expanded_transcription = replacements(input_transcription)
-                            cleaned_transcription = transcibe_num2word(expanded_transcription)
-                            print(cleaned_transcription)
-
-                            json_append(manifest_path,file_path,cleaned_transcription,audio_duration)
-                            
-                            os.rename(file_path,processed_path)
-
-                            print("Appended to manifest file, moving on to next audio clip")
-                            break
+                    print("Appended to manifest file, moving on to next audio clip")
 
     print("All files have now been processed! Please check the manifest file for any inconsistencies!")
 
@@ -142,8 +149,11 @@ def json_append(manifest_file: str, filepath: str, transcription: str, duration:
     """
     STRING = {"audio_filepath": f'"{filepath}"', "text": f'"{transcription}"', "duration": f'{duration}'}
     
-    with open(manifest_file, "a+") as json_file:            
-        json.dump(STRING, json_file)
+    print(STRING)
+    
+    with open(manifest_file, "a") as json_file:            
+        json_file.write(str(STRING)+'\n')
+        json_file.close()
         
 def replacements(transcription: str) -> str:
     """ replacements changes short hand abbrevations of words back to original for transcription
@@ -235,8 +245,8 @@ def json_split(input_file: str) -> None:
 
         random.shuffle(data)
 
-        train_data = data[:80]
-        valid_data = data[20:]
+        train_data = data[:int((len(data)+1)*.80)]
+        valid_data = data[int((len(data)+1)*.80):]
         
         print("Current weightings are set to: 80% - Training | 20% - Validation")
            
