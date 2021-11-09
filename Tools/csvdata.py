@@ -5,7 +5,9 @@ import numpy as np
 
 import json
 import codecs
+
 import pydub
+import simpleaudio
 
 from natsort import natsorted
 
@@ -15,6 +17,7 @@ from tkinter.filedialog import askdirectory, askopenfilename
 from num2words import num2words
 from pydub import AudioSegment
 from pydub import generators
+from pydub import playback
 
 def file_iterate(audio_dir: str) -> None:
     """ file_iterate goes over each mp3 file and provides the ability to transcribe them
@@ -95,6 +98,8 @@ def file_iterate(audio_dir: str) -> None:
                     
                     cleaned_transcription = transcibe_num2word(input_transcription)
                     expanded_transcription = replacements(cleaned_transcription)
+                    
+                    print(expanded_transcription)
                     json_append(manifest_path,file_path,expanded_transcription,audio_duration)
                     
                     os.rename(file_path,processed_path)
@@ -160,7 +165,7 @@ def replacements(transcription: str) -> str:
     split_transcription = transcription.split()
     updated = []
     
-    for part in enumerate(split_transcription):
+    for index, part in enumerate(split_transcription):
         if part.lower() in replacements.keys():
             updated.append(replacements[part])
         else:
