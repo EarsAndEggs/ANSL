@@ -1,6 +1,7 @@
 import os
 import sys
 import random
+from typing import List
 import numpy as np
 
 import json
@@ -55,8 +56,8 @@ def file_iterate(audio_dir: str) -> None:
         for audio_file in natsorted(audio_files):
             file_name = os.fsdecode(audio_file)
             if file_name.endswith(".wav"):
-
-                wav_import_number = len([True for audio_file in audio_files if audio_file.endswith(".wav")])
+                #wav_import_number = len([True for audio_file in audio_files if audio_file.endswith(".wav")])
+                wav_import_number = len([name for name in os.listdir(audio_dir) if os.path.isfile(os.path.join(audio_dir, name))])
                 print(f"{wav_import_number} audio clips remaining for processing")
 
                 file_path = os.path.abspath(os.path.join(audio_dir, file_name))
@@ -65,8 +66,9 @@ def file_iterate(audio_dir: str) -> None:
                 
                 sound1 = AudioSegment.from_file(file_path)
                 sound2 = generators.Sine(freq=1000).to_audio_segment(duration=1000)
+                sound3 = AudioSegment.silent(500)
 
-                combinedsound = sound1 + sound2
+                combinedsound = sound3 + sound1 + sound2
                 #samples = combinedsound.get_array_of_samples()
                 #samples = np.array(samples)
                 
@@ -109,6 +111,41 @@ def file_iterate(audio_dir: str) -> None:
     print("All files have now been processed! Please check the manifest file for any inconsistencies!")
 
 
+def cut_audio(filecut: str, start: int, end: int, maxsecs = 10, steps = 0.1) -> None:
+    
+    valid = np.arange(0, maxsecs, steps).tolist()
+    
+    if start or end not in valid:
+        raise ValueError("Error: start or end must range from 0 to %r." % maxsecs)
+    
+    sound_file = pydub.AudioSegment.from_wav(filecut)
+    sound_file_Value = np.array(sound_file.get_array_of_samples())
+
+    new_file=sound_file_Value[start : end]
+    song = pydub.AudioSegment(new_file.tobytes(), frame_rate=sound_file.frame_rate,sample_width=sound_file.sample_width,channels=sound_file.channels)
+
+    song.export(filecut, format="wav")
+
+def gui_input(type: int, title: str) -> str:
+
+    root = Tk()
+    root.overrideredirect(True)
+    root.lift()
+    root.attributes('-topmost',True)
+    root.after_idle(root.attributes,'-topmost',False)
+    
+    valid = {0, 1}
+    if type not in valid:
+        raise ValueError("Error: type must be one of %r." % valid)
+    
+    if type == 0:
+        opendir = askdirectory(title=title)
+        return opendir
+    elif type == 1:
+        openfilename = askopenfilename(filetypes=[("JSON file","*.json")], title=title)
+        return openfilename
+    
+
 def transcibe_num2word(transcription: str) -> str:
     """transcribe_num2word converts a list of ints to a written format. If contains words handle this correctly.
 
@@ -138,7 +175,6 @@ def transcibe_num2word(transcription: str) -> str:
         transcription_list.append(word)
 
     return " ".join(transcription_list)
-
 
 def json_append(manifest_file: str, filepath: str, transcription: str, duration: int) -> None:
     """ json_append writes the transcriptions and required data to the data csv file
